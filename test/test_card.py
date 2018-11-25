@@ -95,7 +95,27 @@ class TestCard(unittest.TestCase):
         self.assertTrue(is_new_winner(new_card=Card('Hearts', 0),
                                       winning_card=Card('Spades', 12), trump_suit='Hearts'))
 
+    def test_get_trick_winner(self):
+        from Card import Card, get_trick_winner
 
+        # Normal trick, everyone follows suit. 3 wins
+        self.assertEqual(get_trick_winner([Card('Clubs', 2),
+                                           Card('Clubs', 7),
+                                           Card('Clubs', 10),
+                                           Card('Clubs', 12)]), 3)
+
+        # Trump = Diamonds wins. 2 wins
+        self.assertEqual(get_trick_winner([Card('Spades', 10),
+                                           Card('Spades', 11),
+                                           Card('Diamonds', 0),
+                                           Card('Spades', 12)],
+                                           trump_suit='Diamonds'), 2)
+
+        # No one follows suit, no trump. 0 wins
+        self.assertEqual(get_trick_winner([Card('Hearts', 0),
+                                           Card('Diamonds', 12),
+                                           Card('Clubs', 12),
+                                           Card('Spades', 12)]), 0)
 
 if __name__ == '__main__':
     unittest.main()

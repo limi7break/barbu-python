@@ -30,6 +30,18 @@ class Card():
     def __repr__(self):
         return str(self)
 
+    def __eq__(self, other):
+        return self.suit == other.suit and self.value == other.value
+
+    def __int__(self):
+        return Card.suits.index(self.suit)*13 + self.value
+
+    @staticmethod
+    def int_to_card(x):
+        suit = Card.suits[x//13]
+        value = x % 13
+        return Card(suit, value)
+
     @staticmethod
     def suit_to_symbol(x):
         if x == 'Hearts':
@@ -42,18 +54,6 @@ class Card():
             return '♠'
 
         return x
-
-'''
-    def __int__(self):
-        # Used for feature vector translation.
-        return Card.suits.index(self.suit)*13 + (self.value - 1)
-
-    @staticmethod
-    def int_to_card(x):
-        suit = Card.suits[x//13]
-        value = x % 13 + 1
-        return Card(suit, value)
-'''
 
 class Deck():
 
@@ -93,3 +93,17 @@ def is_new_winner(new_card, winning_card, trump_suit=None):
         return True
 
     return False
+
+def get_trick_winner(trick_cards, trump_suit=None):
+    '''
+        Returns an integer which is the index of the winning
+        card in the trick, taking into account trump suit
+        if possible.
+    '''
+    winning_card = trick_cards[0]
+
+    for card in trick_cards[1:]:
+        if is_new_winner(card, winning_card, trump_suit):
+            winning_card = card
+
+    return trick_cards.index(winning_card)
