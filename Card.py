@@ -1,8 +1,8 @@
+import consts
 from random import shuffle
 
 class Card():
 
-    DIFFERENT_CARDS = 52
     suits  = ['♥', '♦', '♣', '♠']
     labels = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
 
@@ -94,11 +94,11 @@ def is_new_winner(new_card, winning_card, trump_suit=None):
 
     return False
 
-def get_trick_winner(trick_cards, trump_suit=None):
+def get_trick_winner(first_player, trick_cards, trump_suit=None):
     '''
-        Returns an integer which is the index of the winning
-        card in the trick, taking into account trump suit
-        if possible.
+        Returns an integer which is the index of the player
+        who played the winning card in the trick, taking into
+        account trump suit if possible.
     '''
     winning_card = trick_cards[0]
 
@@ -106,4 +106,4 @@ def get_trick_winner(trick_cards, trump_suit=None):
         if is_new_winner(card, winning_card, trump_suit):
             winning_card = card
 
-    return trick_cards.index(winning_card)
+    return (trick_cards.index(winning_card) + first_player) % consts.NUM_PLAYERS

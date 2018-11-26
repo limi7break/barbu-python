@@ -1,9 +1,9 @@
-from Game import Game
+from game.Game import Game
 
-class Atout(Game):
+class Domino(Game):
 
-    def __init__(self, players, trump_suit=None):
-        super().__init__(players, trump_suit)
+    def __init__(self, players, first_player, trump_suit=None):
+        super().__init__(players, first_player, trump_suit)
 
     def get_playable_actions(self, hand, trick_cards):
         if not trick_cards:

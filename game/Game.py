@@ -1,29 +1,30 @@
+import consts
 from copy import deepcopy
-from Card import Card, Deck, get_trick_winner
+from Card import get_trick_winner
 
 class State():
-    def __init__(self, trump_suit=None):
+    def __init__(self, players, first_player, trump_suit=None):
         '''
             Missing suits is a dictionary of 4 lists (one for every suit).
             Each list has 4 boolean entries (one for every player).
             If an entry is True, it means that player has ran out of
             cards of that suit.
         '''
-        missing_suits = {'♥': [False for _ in range(Game.NUM_PLAYERS)],
-                         '♦': [False for _ in range(Game.NUM_PLAYERS)],
-                         '♣': [False for _ in range(Game.NUM_PLAYERS)],
-                         '♠': [False for _ in range(Game.NUM_PLAYERS)]}
+        missing_suits = {'♥': [False for _ in range(consts.NUM_PLAYERS)],
+                         '♦': [False for _ in range(consts.NUM_PLAYERS)],
+                         '♣': [False for _ in range(consts.NUM_PLAYERS)],
+                         '♠': [False for _ in range(consts.NUM_PLAYERS)]}
 
-        self.current_player = 0
-        self.first_player = 0
-        self.hands = [[] for _ in range(Game.NUM_PLAYERS)]
+        self.current_player = first_player
+        self.first_player = first_player
+        self.hands = [deepcopy(player.hand) for player in players]
         self.trick_cards = []
         self.played_cards = []
         self.missing_suits = missing_suits
         self.highest = {'♥': 12, '♦': 12, '♣': 12, '♠': 12}
         self.trump_suit = trump_suit
         self.playable_actions = []
-        self.scores = [0 for _ in range(Game.NUM_PLAYERS)]
+        self.scores = [0 for _ in range(consts.NUM_PLAYERS)]
         self.terminal = False
 
     def __str__(self):
@@ -62,17 +63,10 @@ class State():
 
 class Game():
 
-    NUM_PLAYERS = 4
-
-    def __init__(self, players, trump_suit=None):
-        assert len(players) == Game.NUM_PLAYERS, '[-] Please give a list of exactly {} players!'.format(NUM_PLAYERS)
+    def __init__(self, players, first_player, trump_suit=None):
+        assert len(players) == consts.NUM_PLAYERS, '[-] Please give a list of exactly {} players!'.format(consts.NUM_PLAYERS)
         self.players = players
-
-        self.state = State()
-
-        self.deck = Deck()
-        self.distribute_cards()
-        assert self.deck.is_empty(), '[-] Not all cards have been distributed!'
+        self.state = State(players, first_player, trump_suit)
 
     def play(self):
         while not self.state.terminal:
@@ -100,16 +94,11 @@ class Game():
 
         return self.state.scores
 
-    def distribute_cards(self):
-        for i in range(Card.DIFFERENT_CARDS):
-            self.state.hands[i % len(self.players)] += self.deck.draw()
-
-        for i in range(len(self.state.hands)):
-            self.state.hands[i] = list(map(Card.int_to_card, sorted(map(int, self.state.hands[i]))))
-
     def get_next_state(self, state, action):
         # Get card from action number and remove it from player's hand
         played_card = state.hands[state.current_player].pop(action)
+
+        print('{} played: {}'.format(state.current_player, played_card))
         
         # Put the played card in the trick cards and played cards
         state.trick_cards.append(played_card)
@@ -135,13 +124,14 @@ class Game():
         #     - calculate winner and update first and current player
         #     - empty trick cards
         #     - update scores
-        if len(state.trick_cards) == 4:
-            state.current_player = (get_trick_winner(state.trick_cards) + state.first_player) % len(self.state.hands)
+        if len(state.trick_cards) == consts.NUM_PLAYERS:
+            state.current_player = get_trick_winner(state.first_player, state.trick_cards, state.trump_suit)
+            print('Player {} won the trick!'.format(state.current_player))
             state.first_player = state.current_player
             state = self.update_scores(state)
             state.trick_cards = []
         else:
-            state.current_player = (state.current_player + 1) % Game.NUM_PLAYERS
+            state.current_player = (state.current_player + 1) % consts.NUM_PLAYERS
 
         # If all hands are empty, this state is terminal
         if not any(state.hands):
