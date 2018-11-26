@@ -14,8 +14,8 @@ class Barbu():
 
     def play(self):
         # Ask who should be the first dealer
-        self.dealer = -2
-        while self.dealer < -1 or self.dealer > consts.NUM_PLAYERS:
+        self.dealer = None
+        while self.dealer is None or self.dealer < -1 or self.dealer >= consts.NUM_PLAYERS:
             self.dealer = int_input('Insert first dealer number (-1 for random): ')
 
         if self.dealer == -1:

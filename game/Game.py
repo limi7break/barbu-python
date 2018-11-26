@@ -3,7 +3,7 @@ from copy import deepcopy
 from Card import get_trick_winner
 
 class State():
-    def __init__(self, players, first_player, trump_suit=None):
+    def __init__(self, game, players, first_player, trump_suit=None):
         '''
             Missing suits is a dictionary of 4 lists (one for every suit).
             Each list has 4 boolean entries (one for every player).
@@ -15,11 +15,12 @@ class State():
                          '♣': [False for _ in range(consts.NUM_PLAYERS)],
                          '♠': [False for _ in range(consts.NUM_PLAYERS)]}
 
+        self.game = game
         self.current_player = first_player
         self.first_player = first_player
         self.hands = [deepcopy(player.hand) for player in players]
         self.trick_cards = []
-        self.played_cards = []
+        self.played_cards = [] if game != 'Domino' else {'♥': [], '♦': [], '♣': [], '♠': []}
         self.missing_suits = missing_suits
         self.highest = {'♥': 12, '♦': 12, '♣': 12, '♠': 12}
         self.trump_suit = trump_suit
@@ -33,6 +34,7 @@ class State():
         '''
         return '''
    [State]
+   game: {}
    current_player: {}
    first_player: {}
    hands[0]: {}
@@ -50,7 +52,7 @@ class State():
    playable_actions: {}
    scores: {}
    terminal: {}
-   '''.format(self.current_player, self.first_player,
+   '''.format(self.game, self.current_player, self.first_player,
               self.hands[0], self.hands[1], self.hands[2],
               self.hands[3], self.trick_cards, self.played_cards,
               self.missing_suits['♥'], self.missing_suits['♦'],
@@ -66,7 +68,7 @@ class Game():
     def __init__(self, players, first_player, trump_suit=None):
         assert len(players) == consts.NUM_PLAYERS, '[-] Please give a list of exactly {} players!'.format(consts.NUM_PLAYERS)
         self.players = players
-        self.state = State(players, first_player, trump_suit)
+        self.state = State(self.__class__.__name__, players, first_player, trump_suit)
 
     def play(self):
         while not self.state.terminal:
@@ -97,7 +99,6 @@ class Game():
     def get_next_state(self, state, action):
         # Get card from action number and remove it from player's hand
         played_card = state.hands[state.current_player].pop(action)
-
         print('{} played: {}'.format(state.current_player, played_card))
         
         # Put the played card in the trick cards and played cards
@@ -111,10 +112,11 @@ class Game():
         # If the highest card of a suit has been played,
         # update it with a new highest card
         if played_card.value == state.highest[played_card.suit]:
-            values_played_suit = sorted([card.value for card in state.played_cards if card.suit == played_card.suit])
-            
-            if values_played_suit:
-                new_highest = values_played_suit[-1]
+            suit_played_values = [card.value for card in state.played_cards if card.suit == played_card.suit]
+            remaining_values = [value for value in range(13) if value not in suit_played_values]
+
+            if remaining_values:
+                new_highest = remaining_values[-1]
             else:
                 new_highest = None
             
