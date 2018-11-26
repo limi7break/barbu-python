@@ -2,7 +2,8 @@ import random, importlib, consts
 from operator import add
 from utils import int_input
 from Card import Card, Deck
-from Player import RandomPlayer, HumanCLIPlayer
+from player.Player import RandomPlayer
+from player.HumanCLIPlayer import HumanCLIPlayer
 
 class Barbu():
 
