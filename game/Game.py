@@ -103,15 +103,12 @@ class Game():
                              if i == self.state.current_player else None
                              for i in range(len(self.players))]
             
-            # Get playable actions for the current player
-            hand = __state.hands[self.state.current_player]
-            trick_cards = self.state.trick_cards
-            playable_actions = self.get_playable_actions()
-            __state.playable_actions = playable_actions
+            # Get playable actions for the current player and embed them into the state
+            __state.playable_actions = self.get_playable_actions()
 
             # Send modified state to the current player and wait for them to choose an action
             action = None
-            while action not in playable_actions:                
+            while action not in __state.playable_actions:
                 action = self.players[self.state.current_player].get_next_action(__state)
 
             # Compute the next state based on the action we got

@@ -79,4 +79,5 @@ class RandomPlayer(Player):
         return random.choice(list(range(13)))
 
     def get_next_action(self, state):
+        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!\n{}\n{}'.format(self.ID, self.hand, state.hands[state.current_player])
         return random.choice(state.playable_actions)

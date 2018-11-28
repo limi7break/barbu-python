@@ -1,8 +1,8 @@
 import consts
-from utils import tell_everyone
+from copy import deepcopy
 from game.Game import Game
 from Card import Card
-from utils import int_input
+from utils import int_input, tell_everyone
 
 class Domino(Game):
 
@@ -50,8 +50,13 @@ class Domino(Game):
             when a suit has not been 'opened' yet.
         '''
         if action > -1:
+            # Get card from action number and remove it from player's hand
             played_card = self.state.hands[self.state.current_player].pop(action)
-            tell_everyone(self.players, '{} played: {}'.format(self.state.current_player, played_card))
+            self.players[self.state.current_player].hand.pop(action)
+
+            # Notify players of the played card
+            for i in range(len(self.players)):
+                self.players[i].notify_card(self.state.current_player, deepcopy(played_card))
 
             # Attach the card to the list.
             self.attach_card(played_card)

@@ -17,10 +17,11 @@ class GUIHumanPlayer(HumanPlayer):
         A human player that can play interactively
         and select actions via Graphical User Interface.
     '''
-    APP_NAME = 'barbu-python'
-    IMG_DIR  = 'img'
-    LEFT_BG  = '#369f4d'
-    RIGHT_BG = '#096c1f'
+    APP_NAME   = 'barbu-python'
+    IMG_DIR    = 'img'
+    LEFT_BG    = '#369f4d'
+    RIGHT_BG   = '#096c1f'
+    INFO_LINES = 20
 
     def __init__(self, ID, name=""):
         super().__init__(ID, name)
@@ -136,8 +137,14 @@ class GUIHumanPlayer(HumanPlayer):
         return int(starting_value)
 
     def get_next_action(self, state):
+        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!'.format(self.ID)
+
         hand = state.hands[state.current_player]
         self.show_hand(hand)
+
+        if state.playable_actions == [-1]:
+            self.refresh()
+            return -1
 
         # Create integer variable
         action = IntVar()
@@ -146,7 +153,7 @@ class GUIHumanPlayer(HumanPlayer):
         for i in state.playable_actions:
             # Bind actions to playable cards that set the
             # action variable to the corresponding value
-            func_id = self.card_labels[i].bind('<Button-1>', (lambda x: lambda _: action.set(x))(i))
+            func_id = self.card_labels[i].bind('<Button-1>', (lambda x: lambda _: action.set(x))(i)) # lambda closure
             func_ids.append(func_id)
 
             # Highlight playable cards by moving them up 10px
@@ -186,7 +193,14 @@ class GUIHumanPlayer(HumanPlayer):
         return action
 
     def tell(self, string):
-        self.info_label.configure(text=self.info_label.cget('text') + '\n' + string)
+        lines = self.info_label.cget('text').splitlines()
+        
+        if len(lines) == GUIHumanPlayer.INFO_LINES:
+            lines.pop(0)
+        
+        lines.append(string)
+        
+        self.info_label.configure(text='\n'.join(lines))
         self.refresh()
 
     def notify_card(self, ID, card):
@@ -199,25 +213,6 @@ class GUIHumanPlayer(HumanPlayer):
                 label.configure(image='')
 
         self.refresh()
-
-    def trick_ended(self, timeout=5):
-        '''
-            This method is called by the GUI to freeze when a trick ends
-            and waits for user input to proceed, so the player is able to see
-            which cards were played in the last trick.
-
-            Default timeout is 5 seconds.
-        '''
-        def finalize():
-            self.card_n_label.configure(image='')
-            self.card_w_label.configure(image='')
-            self.card_e_label.configure(image='')
-            self.card_s_label.configure(image='')
-            self.info_label.configure(text='')
-            self.window.after_cancel(after_id)
-
-        self.window.bind('<Key>', finalize)
-        after_id = self.window.after(timeout * 1000, finalize)
 
     def show_hand(self, hand):
         x = 35

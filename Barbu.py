@@ -39,6 +39,8 @@ class Barbu():
                 self.deck = Deck()
                 self.distribute_cards()
                 assert self.deck.is_empty(), '[-] Not all cards have been distributed!'
+                for player in self.players:
+                    assert len(player.hand) == 13, '[-] Player {}\'s hand does not contain 13 cards!'.format(player.ID)
 
                 # Ask dealer what should be the next game
                 available_games = [game_num for game_num, played in self.players[self.dealer_ID].played_games.items() if not played]

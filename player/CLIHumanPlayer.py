@@ -41,6 +41,8 @@ class CLIHumanPlayer(HumanPlayer):
         return starting_value
 
     def get_next_action(self, state):
+        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!'.format(self.ID)
+
         hand = state.hands[state.current_player]
 
         if state.playable_actions != [-1]:
@@ -49,7 +51,7 @@ class CLIHumanPlayer(HumanPlayer):
             playable_cards = ['[PASS]']
         
         print('Hand: {}'.format(hand))
-        
+
         if state.game == 'Domino':
             print('Played cards:')
             [print('    {}: {}'.format(suit, cards)) for suit, cards, in state.played_cards.items()]
