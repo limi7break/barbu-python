@@ -1,7 +1,3 @@
-import sys
-
-sys.path.append('..')
-
 import os, consts
 from player.Player import HumanPlayer
 from utils import is_valid_int
@@ -76,7 +72,24 @@ class GUIHumanPlayer(HumanPlayer):
         self.seats = {((self.ID + 2) % consts.NUM_PLAYERS): self.card_n_label,
                       ((self.ID + 1) % consts.NUM_PLAYERS): self.card_w_label,
                       ((self.ID + 3) % consts.NUM_PLAYERS): self.card_e_label,
-                       self.ID:                           self.card_s_label}
+                       self.ID:                             self.card_s_label}
+
+        self.domino = False
+        self.domino_labels = {}
+        domino_order = [int(Card('Hearts',  'A'))] + list(range(12))    \
+                     + [int(Card('Diamonds','A'))] + list(range(13,25)) \
+                     + [int(Card('Clubs',   'A'))] + list(range(26,38)) \
+                     + [int(Card('Spades',  'A'))] + list(range(39,51))
+        x = 35
+        y = -85
+        for i, n in enumerate(domino_order):
+            card = Card.int_to_card(n)
+            label = Label(self.left_up, bg=GUIHumanPlayer.LEFT_BG, image=self.card_images[card])
+            x += 49
+            if i % 13 == 0:
+                x  = 35
+                y += 100
+            self.domino_labels[card] = {'label': label, 'x': x, 'y': y}
 
         # Layout widgets
         self.game_label.grid(padx=5, pady=5)
@@ -192,7 +205,28 @@ class GUIHumanPlayer(HumanPlayer):
 
         return action
 
+    def begin_domino(self):
+        self.domino = True
+        self.player_n_label.place_forget()
+        self.player_w_label.place_forget()
+        self.player_e_label.place_forget()
+        self.player_s_label.place_forget()
+
+    def end_domino(self):
+        self.domino = False
+        
+        for lxy in self.domino_labels.values():
+            lxy['label'].place_forget()
+        
+        self.player_n_label.place(x=340, y=50)
+        self.player_w_label.place(x=145, y=200)
+        self.player_e_label.place(x=530, y=200)
+        self.player_s_label.place(x=340, y=360)
+
     def tell(self, string):
+        if 'Domino' in string:
+            self.begin_domino()
+
         lines = self.info_label.cget('text').splitlines()
         
         if len(lines) == GUIHumanPlayer.INFO_LINES:
@@ -204,11 +238,24 @@ class GUIHumanPlayer(HumanPlayer):
         self.refresh()
 
     def notify_card(self, ID, card):
+        if self.domino:
+            lxy = self.domino_labels[card]
+
+            lxy['label'].place(x=lxy['x'], y=lxy['y'])
+            
+            if all([lxy['label'].place_info() for lxy in self.domino_labels.values()]):
+                sleep(3) # fix this
+                self.end_domino()
+            
+            self.refresh()
+            return
+
         self.seats[ID].configure(image=self.card_images[card])
         self.refresh()
 
+        # If trick ended
         if all([label.cget('image') != '' for label in self.seats.values()]):
-            sleep(3) # fix this
+            sleep(1) # fix this
             for label in self.seats.values():
                 label.configure(image='')
 
