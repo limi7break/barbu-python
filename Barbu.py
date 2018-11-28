@@ -2,7 +2,7 @@ import random, importlib, consts
 from operator import add
 from utils import int_input, tell_everyone
 from Card import Card, Deck
-from player.Player import RandomPlayer
+from player.Player import HumanPlayer, RandomPlayer
 from player.HeuristicPlayer import HeuristicPlayer
 from player.MCPlayer import MCPlayer
 from player.CLIHumanPlayer import CLIHumanPlayer
@@ -123,9 +123,15 @@ def create_players():
         elif choice == 2:
             print('[-] Not implemented yet!')
         elif choice == 3:
-            players.append(CLIHumanPlayer(ID=len(players)))
+            if any([isinstance(player, CLIHumanPlayer) for player in players]):
+                print('[-] Multiple CLIHumanPlayers are not implemented yet!')
+            else:
+                players.append(CLIHumanPlayer(ID=len(players)))
         elif choice == 4:
-            players.append(GUIHumanPlayer(ID=len(players)))
+            if any([isinstance(player, CLIHumanPlayer) for player in players]):
+                print('[-] Multiple GUIHumanPlayers are not implemented yet!')
+            else:
+                players.append(GUIHumanPlayer(ID=len(players)))
 
     return players
 
@@ -135,4 +141,5 @@ if __name__ == '__main__':
     barbu = Barbu(players)
     scores = barbu.play()
     tell_everyone(players, 'Game finished! Final scores: {}'.format(scores))
-    print('Game finished! Final scores: {}'.format(scores))
+    if all([not isinstance(player, HumanPlayer) for player in players]):
+        print('Game finished! Final scores: {}'.format(scores))
