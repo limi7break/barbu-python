@@ -1,4 +1,5 @@
 import consts
+from utils import tell_everyone
 from game.Game import Game
 from Card import Card
 from utils import int_input
@@ -13,9 +14,9 @@ class Domino(Game):
         while self.starting_value is None or self.starting_value not in range(13):
             self.starting_value = players[first_player].get_starting_value()
         
-        print('(starting value: {})'.format(Card.labels[self.starting_value]))
+        tell_everyone(self.players, '(starting value: {})'.format(Card.labels[self.starting_value]))
 
-    def get_next_state(self, state, action):
+    def get_next_state(self, action):
         '''
             Domino overrides get_next_state because it has special rules.
 
@@ -49,34 +50,29 @@ class Domino(Game):
             when a suit has not been 'opened' yet.
         '''
         if action > -1:
-            played_card = state.hands[state.current_player].pop(action)
-            print('{} played: {}'.format(state.current_player, played_card))
+            played_card = self.state.hands[self.state.current_player].pop(action)
+            tell_everyone(self.players, '{} played: {}'.format(self.state.current_player, played_card))
 
             # Attach the card to the list.
-            state = self.attach_card(state, played_card)
+            self.attach_card(played_card)
 
             # If the current player has an empty hand
             # and still has a score == 0, update scores
-            if not state.hands[state.current_player] and not state.scores[state.current_player]:
-                state = self.update_scores(state)
+            if not self.state.hands[self.state.current_player] and not self.state.scores[self.state.current_player]:
+                self.update_scores()
 
         else:
-            print('{} passed!'.format(state.current_player))
+            tell_everyone(self.players, '{} passed!'.format(self.state.current_player))
 
-        state.current_player = (state.current_player + 1) % consts.NUM_PLAYERS
+        self.state.current_player = (self.state.current_player + 1) % consts.NUM_PLAYERS
 
         # If all hands are empty, this state is terminal
-        if not any(state.hands):
-            state.terminal = True
+        if not any(self.state.hands):
+            self.state.terminal = True
 
-        return state
+    def get_playable_actions(self):
+        hand = self.state.hands[self.state.current_player]
 
-    def get_playable_actions(self, hand, _):
-        '''
-            For this game, trick_cards is not used.
-            played_cards is instead used to compute the playable
-            actions. So, the parameter is ignored for clarity.
-        '''
         playable_actions = []
         for i, card in enumerate(hand):
             # Check starting cards
@@ -108,7 +104,7 @@ class Domino(Game):
 
         return playable_actions
 
-    def update_scores(self, state):
+    def update_scores(self):
         '''
             Give the current player the highest current score.
 
@@ -116,12 +112,10 @@ class Domino(Game):
             the other players have already received theirs.
         '''
         scores = [45, 20, 10, -10]
-        finished_num = sum([1 for score in state.scores if score])
-        state.scores[state.current_player] += scores[finished_num]
-        
-        return state
+        finished_num = sum([1 for score in self.state.scores if score])
+        self.state.scores[self.state.current_player] += scores[finished_num]
 
-    def attach_card(self, state, played_card):
+    def attach_card(self, played_card):
         '''
             Adds the played card to the state's played cards,
             keeping into account that these are special cards
@@ -137,7 +131,7 @@ class Domino(Game):
             passed to get_next_state is validated in the play() method
             against the actions returned by get_playable_actions.
         '''
-        suit_cards = state.played_cards[played_card.suit]
+        suit_cards = self.state.played_cards[played_card.suit]
         
         if not suit_cards:
             suit_cards = [played_card]
@@ -157,6 +151,4 @@ class Domino(Game):
         else:
             raise ValueError('[-] The selected card cannot be appended nor prepended to the corresponding suit! (suit: {}, value: {})'.format(played_card.suit, played_card.value))
 
-        state.played_cards[played_card.suit] = suit_cards
-
-        return state
+        self.state.played_cards[played_card.suit] = suit_cards

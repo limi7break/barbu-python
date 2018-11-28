@@ -7,4 +7,5 @@ class MCPlayer(Player):
         for action selection.
 
     '''
-    pass
+    def __init__(self, ID, name=''):
+        super().__init__(ID, name)

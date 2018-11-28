@@ -47,13 +47,14 @@ class TestCard(unittest.TestCase):
             Card('here', 8)
 
     def test_deck(self):
+        import consts
         from Card import Card, Deck
 
         deck = Deck()
-        self.assertEqual(len(deck.cards), Card.DIFFERENT_CARDS)
+        self.assertEqual(len(deck.cards), consts.DIFFERENT_CARDS)
 
         drawn     = deck.draw(5)
-        remaining = Card.DIFFERENT_CARDS - 5
+        remaining = consts.DIFFERENT_CARDS - 5
         self.assertEqual(len(drawn), 5)
         self.assertEqual(len(deck.cards), remaining)
 
@@ -99,23 +100,23 @@ class TestCard(unittest.TestCase):
         from Card import Card, get_trick_winner
 
         # Normal trick, everyone follows suit. 3 wins
-        self.assertEqual(get_trick_winner([Card('Clubs', 2),
-                                           Card('Clubs', 7),
-                                           Card('Clubs', 10),
-                                           Card('Clubs', 12)]), 3)
+        self.assertEqual(get_trick_winner(0, [Card('Clubs', 2),
+                                              Card('Clubs', 7),
+                                              Card('Clubs', 10),
+                                              Card('Clubs', 12)]), 3)
 
         # Trump = Diamonds wins. 2 wins
-        self.assertEqual(get_trick_winner([Card('Spades', 10),
-                                           Card('Spades', 11),
-                                           Card('Diamonds', 0),
-                                           Card('Spades', 12)],
-                                           trump_suit='Diamonds'), 2)
+        self.assertEqual(get_trick_winner(0, [Card('Spades', 10),
+                                              Card('Spades', 11),
+                                              Card('Diamonds', 0),
+                                              Card('Spades', 12)],
+                                              trump_suit='Diamonds'), 2)
 
         # No one follows suit, no trump. 0 wins
-        self.assertEqual(get_trick_winner([Card('Hearts', 0),
-                                           Card('Diamonds', 12),
-                                           Card('Clubs', 12),
-                                           Card('Spades', 12)]), 0)
+        self.assertEqual(get_trick_winner(0, [Card('Hearts', 0),
+                                              Card('Diamonds', 12),
+                                              Card('Clubs', 12),
+                                              Card('Spades', 12)]), 0)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,13 +1,16 @@
 import consts
-from player.Player import Player
+from player.Player import HumanPlayer
 from utils import int_input
 from Card import Card
 
-class HumanCLIPlayer(Player):
+class CLIHumanPlayer(HumanPlayer):
     '''
         A human player that can play interactively
         and select actions via Command Line Interface.
     '''
+    def __init__(self, ID, name=''):
+        super().__init__(ID, name)
+
     def get_next_game(self):
         available_games = [game_num for game_num, played in self.played_games.items() if not played]
 
@@ -65,3 +68,9 @@ class HumanCLIPlayer(Player):
             action = int_input('Please insert the action number: ')
 
         return state.playable_actions[action]
+
+    def tell(self, string):
+        print(string)
+
+    def notify_card(self, ID, card):
+        print('{} played: {}'.format(ID, card))

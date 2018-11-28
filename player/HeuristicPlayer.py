@@ -6,4 +6,5 @@ class HeuristicPlayer(Player):
         heuristics. It implements a different action logic
         for every game.
     '''
-    pass
+    def __init__(self, ID, name=''):
+        super().__init__(ID, name)
