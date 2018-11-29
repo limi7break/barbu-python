@@ -1,6 +1,6 @@
-import random, importlib, consts
+import os, sys, signal, random, importlib, getopt, datetime, consts
 from operator import add
-from utils import int_input, tell_everyone
+from utils import int_input, tell_everyone, create_plot
 from Card import Card, Deck
 from player.Player import HumanPlayer, RandomPlayer
 from player.HeuristicPlayer import HeuristicPlayer
@@ -15,18 +15,17 @@ class Barbu():
         self.players = players
         self.total_scores = [0 for _ in range(consts.NUM_PLAYERS)]
 
-    def play(self):
-        # Ask who should be the first dealer
-        self.dealer_ID = None
-        while self.dealer_ID is None or self.dealer_ID < -1 or self.dealer_ID >= consts.NUM_PLAYERS:
-            self.dealer_ID = int_input('Please insert ID of first dealer (-1 for random): ')
+    def play(self, dealer_ID=-1):
+        # Reset players to default (empty hand, no played games)
+        for player in self.players:
+            player.reset()
 
-        # Choose a random dealer
-        if self.dealer_ID == -1:
-            self.dealer_ID = random.randint(0, 3)
+        # Choose a random dealer if not previously specified
+        if dealer_ID == -1:
+            dealer_ID = random.randint(0, 3)
         
         # Tell players who is the first dealer
-        tell_everyone(self.players, 'First dealer: {}'.format(self.dealer_ID))
+        tell_everyone(self.players, 'First dealer: {}'.format(dealer_ID))
 
         # Main loop (every game is played for every player)
         for _ in range(len(self.players)):
@@ -43,28 +42,28 @@ class Barbu():
                     assert len(player.hand) == 13, '[-] Player {}\'s hand does not contain 13 cards!'.format(player.ID)
 
                 # Ask dealer what should be the next game
-                available_games = [game_num for game_num, played in self.players[self.dealer_ID].played_games.items() if not played]
+                available_games = [game_num for game_num, played in self.players[dealer_ID].played_games.items() if not played]
 
                 game_num = None
                 while game_num not in available_games:
-                    game_num = self.players[self.dealer_ID].get_next_game()
+                    game_num = self.players[dealer_ID].get_next_game()
                 
                 # Mark the chosen game as played
-                self.players[self.dealer_ID].played_games[game_num] = True
+                self.players[dealer_ID].played_games[game_num] = True
 
                 # Tell players the chosen game
-                tell_everyone(self.players, 'Player {} called {}!'.format(self.dealer_ID, consts.GAMES[game_num].split('.')[1]))
+                tell_everyone(self.players, 'Player {} called {}!'.format(dealer_ID, consts.GAMES[game_num].split('.')[1]))
 
                 # If the dealer chose Atout, ask them for a trump suit
                 trump_suit = None
                 if consts.GAMES[game_num] == 'game.Atout':
                     while trump_suit not in Card.suits:
-                        trump_suit = self.players[self.dealer_ID].get_trump_suit()
+                        trump_suit = self.players[dealer_ID].get_trump_suit()
 
                     tell_everyone(self.players, '(trump suit: {})'.format(trump_suit))
 
                 # Initialize and play chosen game
-                game = self.get_game(game_num, self.players, self.dealer_ID, trump_suit)
+                game = self.get_game(game_num, self.players, dealer_ID, trump_suit)
                 game_scores = game.play()
                 tell_everyone(self.players, 'Game scores: {}'.format(game_scores))
 
@@ -74,7 +73,7 @@ class Barbu():
 
             # Check if the total scores sum to zero, pass dealer to next player
             assert sum(self.total_scores) == 0, 'The total scores do not sum to zero after a complete dealer!'
-            self.dealer_ID = (self.dealer_ID + 1) % consts.NUM_PLAYERS
+            dealer_ID = (dealer_ID + 1) % consts.NUM_PLAYERS
 
         return self.total_scores
 
@@ -103,15 +102,16 @@ class Barbu():
 
 
 
-def create_players():
+def create_players(simulate=False):
     players = []
 
     print('Player types:')
     print('    0: RandomPlayer')
     print('    1: HeuristicPlayer')
     print('    2: MCPlayer')
-    print('    3: CLIHumanPlayer')
-    print('    4: GUIHumanPlayer')
+    if not simulate:
+        print('    3: CLIHumanPlayer')
+        print('    4: GUIHumanPlayer')
 
     while len(players) != consts.NUM_PLAYERS:
         choice = int_input('Please insert the player type for player {}: '.format(len(players)))
@@ -119,15 +119,15 @@ def create_players():
         if choice == 0:
             players.append(RandomPlayer(ID=len(players)))
         elif choice == 1:
-            print('[-] Not implemented yet!')
+            players.append(HeuristicPlayer(ID=len(players)))
         elif choice == 2:
             print('[-] Not implemented yet!')
-        elif choice == 3:
+        elif not simulate and choice == 3:
             if any([isinstance(player, CLIHumanPlayer) for player in players]):
                 print('[-] Multiple CLIHumanPlayers are not implemented yet!')
             else:
                 players.append(CLIHumanPlayer(ID=len(players)))
-        elif choice == 4:
+        elif not simulate and choice == 4:
             if any([isinstance(player, CLIHumanPlayer) for player in players]):
                 print('[-] Multiple GUIHumanPlayers are not implemented yet!')
             else:
@@ -135,11 +135,73 @@ def create_players():
 
     return players
 
+def usage():
+    print('barbu-python')
+    print('    by Michele Ferri (@limi7break)')
+    print()
+    print('Python implementation of Barbu, a 4-player trick-taking card game.')
+    print()
+    print('The ambition of this project is to create an Artificial Intelligence for')
+    print('the game, based on MCTS / UCT in addition to various heuristics.')
+    print()
+    print('usage:')
+    print('    [-s]\tsimulation mode: play simulated games between computer')
+    print('        \tplayers until stopped, collecting data about scores.')
+    print('     -h\thelp')
+    print()
+
+    
+    print('Press Ctrl+C')
+    signal.pause()
+
 if __name__ == '__main__':
     print('Welcome to barbu-python 1.0!')
-    players = create_players()
-    barbu = Barbu(players)
-    scores = barbu.play()
-    tell_everyone(players, 'Game finished! Final scores: {}'.format(scores))
-    if all([not isinstance(player, HumanPlayer) for player in players]):
-        print('Game finished! Final scores: {}'.format(scores))
+
+    simulate = False
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:],'sh')
+    except getopt.GetoptError as e:
+        print(colors.fail('Error: {}. Type -h for help'.format(str(e))))
+        sys.exit(1)
+
+    for opt, arg in opts:
+        if opt in ('-h','--help'):
+            usage()
+            sys.exit(0)
+        elif opt in ('-s'):
+            simulate = True
+            all_scores = []
+            
+            # Define a signal handler to create plot before exiting
+            def signal_handler(sig, frame):
+                if not os.path.exists('plot/'):
+                    os.makedirs('plot/')
+                
+                now = datetime.datetime.now()
+                path = 'plot/{}{}{}_{}{}.png'.format(now.year, now.month, now.day, now.hour, now.minute)
+                
+                create_plot(all_scores, path)
+                
+                sys.exit(0)
+    
+            # Bind the handler to SIGINT (Ctrl-C)
+            signal.signal(signal.SIGINT, signal_handler)
+
+    players = create_players(simulate=simulate)
+
+    while simulate:
+        barbu = Barbu(players)
+        all_scores.append(barbu.play())
+        print('Simulated game {}.'.format(len(all_scores)))
+    else:
+        # Ask who should be the first dealer
+        dealer_ID = None
+        while dealer_ID is None or dealer_ID < -1 or dealer_ID >= consts.NUM_PLAYERS:
+            dealer_ID = int_input('Please insert ID of first dealer (-1 for random): ')
+        
+        barbu = Barbu(players)
+        scores = barbu.play(dealer_ID)
+        tell_everyone(players, 'Game finished! Final scores: {}'.format(scores))
+        if all([not isinstance(player, HumanPlayer) for player in players]):
+            print('Game finished! Final scores: {}'.format(scores))

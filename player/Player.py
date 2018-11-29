@@ -30,6 +30,10 @@ class Player():
         # To avoid checking for HumanPlayer every time
         return
 
+    def reset(self):
+        self.hand  = []
+        self.played_games = {game_num: False for game_num in range(consts.NUM_GAMES)}
+
 class HumanPlayer(Player):
 
     def __init__(self, ID, name=''):

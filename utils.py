@@ -1,3 +1,6 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
 def int_input(prompt='Please enter a number: '):
     while True:
         n = input(prompt)
@@ -21,3 +24,15 @@ def is_valid_int(n):
 def tell_everyone(players, string):
     for player in players:
         player.tell(string)
+
+def create_plot(scores, path):
+    # Convert to numpy array
+    scores = np.asarray(scores)
+
+    for col in range(scores.shape[1]):
+        cs = np.cumsum(scores[:, col])
+        plt.plot(cs)
+
+    plt.legend(['0', '1', '2', '3'])
+    plt.savefig(path)
+    plt.show()

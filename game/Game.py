@@ -111,6 +111,13 @@ class Game():
             while action not in __state.playable_actions:
                 action = self.players[self.state.current_player].get_next_action(__state)
 
+                if action not in __state.playable_actions:
+                    print(self.state)
+                    print('got action: {}'.format(action))
+                    if action:
+                        print('card played: {}'.format(self.players[self.state.current_player].hand[action]))
+                        print('but the only playable cards were: {}'.format([self.players[self.state.current_player].hand[i] for i in __state.playable_actions]))
+
             # Compute the next state based on the action we got
             self.get_next_state(action)
 

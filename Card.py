@@ -91,6 +91,9 @@ def is_new_winner(new_card, winning_card, trump_suit=None):
     :param trump_suit: Trump suit if applicable. Default is None.
     :return: True if new_card wins, False otherwise.
     '''
+    if not winning_card:
+        return True
+
     trump_suit = Card.suit_to_symbol(trump_suit)
 
     if new_card.suit == winning_card.suit:
@@ -113,3 +116,12 @@ def get_trick_winner(first_player, trick_cards, trump_suit=None):
             winning_card = card
 
     return (trick_cards.index(winning_card) + first_player) % consts.NUM_PLAYERS
+
+def get_winning_card(trick_cards):
+    winning_card = None
+    
+    for card in trick_cards:
+        if is_new_winner(card, winning_card):
+            winning_card = card
+
+    return winning_card
