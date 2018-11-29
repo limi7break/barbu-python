@@ -29,6 +29,7 @@ class State():
         self.playable_actions = []
         self.scores = [0 for _ in range(consts.NUM_PLAYERS)]
         self.terminal = False
+        self.starting_value = None # Domino
 
     def __str__(self):
         '''
@@ -54,13 +55,14 @@ class State():
     playable_actions: {}
     scores: {}
     terminal: {}
+    starting value: {}
     '''.format(self.game, self.current_player, self.first_player,
                self.hands[0], self.hands[1], self.hands[2],
                self.hands[3], self.trick_cards, self.played_cards,
                self.missing_suits['♥'], self.missing_suits['♦'],
                self.missing_suits['♣'], self.missing_suits['♠'],
                self.highest, self.trump_suit, self.playable_actions,
-               self.scores, self.terminal)
+               self.scores, self.terminal, self.starting_value)
 
     def __repr__(self):
         return __str__(self)

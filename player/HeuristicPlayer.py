@@ -44,6 +44,8 @@ class HeuristicPlayer(Player):
         return spread_values.index(min(spread_values))
 
     def get_next_action(self, state):
+        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!\n{}\n{}'.format(self.ID, self.hand, state.hands[state.current_player])
+
         if state.game == 'Atout':
             return self.get_next_action_atout(state)
         if state.game == 'NoTricks':
@@ -88,8 +90,8 @@ class HeuristicPlayer(Player):
             
             highest_non_trumps = [card for card in self.hand if card.suit != state.trump_suit and self.is_highest(state, card)]
             for card in highest_non_trumps:
-                players_after = [(self.ID + i + 1) % consts.NUM_PLAYERS for i in range(consts.NUM_PLAYERS - len(state.trick_cards))]
-                if not state.trump_suit or (state.trump_suit and not any([state.missing_suits[card.suit][player] for player in players_after])):
+                other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
+                if not state.trump_suit or (state.trump_suit and not any([state.missing_suits[card.suit][player] for player in other_players])):
                     return self.hand.index(card)
             
             if not highest_non_trumps:
@@ -98,7 +100,7 @@ class HeuristicPlayer(Player):
                     lowest_non_trump = min(non_trumps, key=lambda x: x.value)
                     return self.hand.index(lowest_non_trump)
 
-            return self.hand.index(min(self.hand, key=lambda x: x.value))
+            return self.play_lowest(self.hand)
                 
         else:
             # Non-leading
@@ -109,13 +111,13 @@ class HeuristicPlayer(Player):
                 if highest_card in same_suit:
                     return self.hand.index(highest_card)
                 else:
-                    return self.hand.index(min(same_suit, key=lambda x: x.value))
+                    return self.play_lowest(same_suit)
             else:
                 sorted_trumps = sorted([card for card in self.hand if card.suit == state.trump_suit], key=lambda x: x.value)
                 if sorted_trumps:
                     return self.hand.index(sorted_trumps[0])
                 else:
-                    return self.hand.index(min(self.hand, key=lambda x: x.value))
+                    return self.play_lowest(self.hand)
 
     def get_next_action_notricks(self, state):
         '''
@@ -148,7 +150,7 @@ class HeuristicPlayer(Player):
                 lowest_card = min([card for card in self.hand if card.suit == valid_suits[0]], key=lambda x: x.value)
                 return self.hand.index(lowest_card)
             
-            return self.hand.index(min(self.hand, key=lambda x: x.value))
+            return self.play_lowest(self.hand)
         
         else:
             # Non-leading
@@ -157,31 +159,265 @@ class HeuristicPlayer(Player):
                 winning_card = get_winning_card(state.trick_cards)
                 lower_same_suit = [card for card in same_suit if card.value < winning_card.value]
                 if lower_same_suit:
-                    return self.hand.index(max(lower_same_suit, key=lambda x: x.value))    
+                    return self.play_highest(lower_same_suit)    
                 else:
-                    return self.hand.index(max(same_suit, key=lambda x: x.value))
+                    return self.play_highest(same_suit)
             
-            return self.hand.index(max(self.hand, key=lambda x: x.value))
+            return self.play_highest(self.hand)
 
     def get_next_action_nohearts(self, state):
-        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!\n{}\n{}'.format(self.ID, self.hand, state.hands[state.current_player])
-        return random.choice(state.playable_actions)
+        '''
+            Leading:
+                - if we have only hearts:
+                    - lead lowest.
+                - otherwise, take shortest non-hearts suit.
+                    - if no one has ran out of cards of that suit, and a maximum of 7 cards
+                      of that suit have already been played, lead highest
+                    - otherwise, lead lowest.
+
+            Non-leading:
+                - if we have to follow suit:
+                    - if we *have* to play higher, play the highest card of that suit (unless hearts)
+                    - if we can go lower, play the highest card of that suit that goes lower.
+                - if we don't:
+                    - play the highest hearts we have, otherwise the highest card we have.
+        '''
+        state = self.fix_missing(state)
+
+        if not state.trick_cards:
+            # Leading
+            if all([card.suit == '♥' for card in self.hand]):
+                return self.play_lowest(self.hand)
+
+            diamonds = [card for card in self.hand if card.suit == '♦']
+            clubs = [card for card in self.hand if card.suit == '♣']
+            spades = [card for card in self.hand if card.suit == '♠']
+
+            suits = list(filter(lambda x: len(x) != 0, [diamonds, clubs, spades]))
+            lengths = list(map(len, suits))
+            shortest_suit = suits[lengths.index(min(lengths))]
+
+            other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
+            if not any([state.missing_suits[shortest_suit[0].suit][player] for player in other_players]) and \
+               sum([1 for card in state.played_cards if card.suit == shortest_suit[0].suit]) < 8:
+                return self.play_highest(shortest_suit)
+            else:
+                return self.play_lowest(shortest_suit)
+
+        else:
+            # Non-leading
+            same_suit = [card for card in self.hand if card.suit == state.trick_cards[0].suit]
+            if same_suit:
+                winning_card = get_winning_card(state.trick_cards)
+                lower_same_suit = [card for card in same_suit if card.value < winning_card.value]
+                if lower_same_suit:
+                    return self.play_highest(lower_same_suit)    
+                elif same_suit[0].suit == '♥':
+                    lower_than_10 = [card for card in same_suit if card.value < 8]
+                    if lower_than_10:
+                        return self.play_highest(lower_than_10)
+                else:
+                    return self.play_highest(same_suit)
+            
+            hearts = [card for card in self.hand if card.suit == '♥']
+            if hearts:
+                return self.play_highest(hearts)
+
+            return self.play_highest(self.hand)
 
     def get_next_action_nokingofhearts(self, state):
-        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!\n{}\n{}'.format(self.ID, self.hand, state.hands[state.current_player])
-        return random.choice(state.playable_actions)
+        '''
+            Leading:
+                - if we have only hearts:
+                    - lead lowest.
+                - otherwise, take shortest non-hearts suit.
+                    - if no one has ran out of cards of that suit, and a maximum of 7 cards
+                      of that suit have already been played, lead highest
+                    - otherwise, lead lowest.
+
+            Non-leading:
+                - if we have to follow suit:
+                    - if we *have* to play higher, play the highest card of that suit
+                    - if we can go lower, play the highest card of that suit that goes lower.
+                - if we don't:
+                    - play the K♥ if possible, otherwise the highest card we have.
+        '''
+        state = self.fix_missing(state)
+
+        if not state.trick_cards:
+            # Leading
+            if all([card.suit == '♥' for card in self.hand]):
+                return self.play_lowest(self.hand)
+
+            diamonds = [card for card in self.hand if card.suit == '♦']
+            clubs = [card for card in self.hand if card.suit == '♣']
+            spades = [card for card in self.hand if card.suit == '♠']
+
+            suits = list(filter(lambda x: len(x) != 0, [diamonds, clubs, spades]))
+            lengths = list(map(len, suits))
+            shortest_suit = suits[lengths.index(min(lengths))]
+
+            other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
+            if not any([state.missing_suits[shortest_suit[0].suit][player] for player in other_players]) and \
+               sum([1 for card in state.played_cards if card.suit == shortest_suit[0].suit]) < 8:
+                return self.play_highest(shortest_suit)
+            else:
+                return self.play_lowest(shortest_suit)
+
+        else:
+            # Non-leading
+            same_suit = [card for card in self.hand if card.suit == state.trick_cards[0].suit]
+            if same_suit:
+                winning_card = get_winning_card(state.trick_cards)
+                lower_same_suit = [card for card in same_suit if card.value < winning_card.value]
+                if lower_same_suit:
+                    return self.play_highest(lower_same_suit)    
+                else:
+                    return self.play_highest(same_suit)
+            
+            king_of_hearts = Card('Hearts', 'K')
+            if king_of_hearts in self.hand:
+                return self.hand.index(king_of_hearts)
+
+            return self.play_highest(self.hand)
 
     def get_next_action_nolasttwo(self, state):
-        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!\n{}\n{}'.format(self.ID, self.hand, state.hands[state.current_player])
-        return random.choice(state.playable_actions)
+        '''
+            - if it's one of the last two tricks, always play lowest.
+
+            Leading:
+                - if we have any of the four highest cards, play the one of the longest suit.
+                - otherwise, play a card of a suit that everyone misses.
+                - otherwise, play highest.
+            Non-leading:
+                - if we have to follow suit:
+                    - play highest
+                - if we don't:
+                    - play highest
+        '''
+        state = self.fix_missing(state)
+
+        if not state.trick_cards:
+            # Leading
+            highest_cards = [card for card in self.hand if self.is_highest(state, card)]
+            if highest_cards:
+                if len(highest_cards) == 1:
+                    return self.hand.index(highest_cards[0])
+                else:
+                    longest_suit = [card for card in self.hand if card.suit == highest_cards[0].suit]
+                    for hc in highest_cards:
+                        suit_cards = [card for card in self.hand if card.suit == hc.suit]
+                        if len(suit_cards) > len(longest_suit):
+                            longest_suit = [card for card in self.hand if card.suit == hc.suit]
+
+                    return self.play_highest(longest_suit)
+
+            other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
+            for suit in Card.suits:
+                if all([state.missing_suits[suit][player] for player in other_players]):
+                    suit_cards = [card for card in self.hand if card.suit == suit]
+                    if suit_cards:
+                        return self.play_highest(suit_cards)
+
+            return self.play_highest(self.hand)
+
+        else:
+            # Non-leading
+            same_suit = [card for card in self.hand if card.suit == state.trick_cards[0].suit]
+            if same_suit:
+                return self.play_highest(same_suit)
+            else:
+                return self.play_highest(self.hand)
 
     def get_next_action_noqueens(self, state):
-        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!\n{}\n{}'.format(self.ID, self.hand, state.hands[state.current_player])
-        return random.choice(state.playable_actions)
+        '''
+            Leading:
+                - take shortest suit.
+                    - if no one has ran out of cards of that suit, and a maximum of 7 cards
+                      of that suit have already been played, lead highest except QKA
+                    - otherwise, lead lowest.
+
+            Non-leading:
+                - if we have to follow suit:
+                    - if we *have* to play higher, play the highest card of that suit except QKA
+                    - if we can go lower, play the highest card of that suit that goes lower.
+                - if we don't:
+                    - play queen if possible, otherwise the highest card we have.
+        '''
+        state = self.fix_missing(state)
+
+        if not state.trick_cards:
+            hearts = [card for card in self.hand if card.suit == '♥']
+            diamonds = [card for card in self.hand if card.suit == '♦']
+            clubs = [card for card in self.hand if card.suit == '♣']
+            spades = [card for card in self.hand if card.suit == '♠']
+
+            suits = list(filter(lambda x: len(x) != 0, [hearts, diamonds, clubs, spades]))
+            lengths = list(map(len, suits))
+            shortest_suit = suits[lengths.index(min(lengths))]
+
+            other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
+            if not any([state.missing_suits[shortest_suit[0].suit][player] for player in other_players]) and \
+               sum([1 for card in state.played_cards if card.suit == shortest_suit[0].suit]) < 8:
+                filtered = list(filter(lambda x: x.value < 10, shortest_suit))
+                if filtered:
+                    return self.play_highest(filtered)
+            
+            return self.play_lowest(shortest_suit)
+
+        else:
+            # Non-leading
+            same_suit = [card for card in self.hand if card.suit == state.trick_cards[0].suit]
+            if same_suit:
+                winning_card = get_winning_card(state.trick_cards)
+                lower_same_suit = [card for card in same_suit if card.value < winning_card.value]
+                if lower_same_suit:
+                    return self.play_highest(lower_same_suit)    
+                else:
+                    filtered = list(filter(lambda x: x.value < 10, same_suit))
+                    if filtered:
+                        return self.play_highest(filtered)
+                    else:
+                        return self.play_highest(same_suit)
+            else:
+                queens = [card for card in self.hand if card.value == 10]
+                if queens:
+                    return self.play_highest(queens)
+
+            return self.play_highest(self.hand)
 
     def get_next_action_domino(self, state):
-        assert state.hands[state.current_player] == self.hand, '[-] Player {}\'s hand differs from their hand in the received state!\n{}\n{}'.format(self.ID, self.hand, state.hands[state.current_player])
-        return random.choice(state.playable_actions)
+        '''
+            If there is no other card in our hand between a playable card and
+            the end of the scale, give that card the lowest priority.
+
+            Aces and Kings are given the highest priority.
+        '''
+        if state.playable_actions == [-1]:
+            return -1
+
+        playable_cards = [self.hand[i] for i in state.playable_actions]
+
+        kings_aces = []
+        for pc in playable_cards:
+            if pc.value == 12 or pc.value == 11:
+                kings_aces.append(pc)
+                playable_cards.remove(pc)
+
+        priority_list = []
+        for pc in playable_cards:
+            played_suit = state.played_cards[pc.suit]
+            if pc.value != 0 and pc.value != 12 and \
+               ((Card(pc.suit, pc.value + 1) in played_suit and not any([Card(pc.suit, value) in self.hand for value in range(pc.value)])) \
+               or (Card(pc.suit, pc.value - 1) in played_suit and not any([Card(pc.suit, value) in self.hand for value in range(pc.value + 1, 11)]))):
+               
+                priority_list.append(pc)
+            else:
+                priority_list = [pc] + priority_list
+
+        priority_list = kings_aces + priority_list
+
+        return self.hand.index(priority_list[0])
 
     def calculate_spread(self, pivot, low_ace=False):
         spread = 0
@@ -257,3 +493,9 @@ class HeuristicPlayer(Player):
                 return True
 
         return False
+
+    def play_highest(self, cards):
+        return self.hand.index(max(cards, key=lambda x: x.value))
+
+    def play_lowest(self, cards):
+        return self.hand.index(min(cards, key=lambda x: x.value))

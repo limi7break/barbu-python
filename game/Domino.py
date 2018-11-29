@@ -13,6 +13,8 @@ class Domino(Game):
         self.starting_value = None
         while self.starting_value is None or self.starting_value not in range(13):
             self.starting_value = players[first_player].get_starting_value()
+
+        self.state.starting_value = self.starting_value
         
         tell_everyone(self.players, '(starting value: {})'.format(Card.labels[self.starting_value]))
 
