@@ -25,7 +25,7 @@ def tell_everyone(players, string):
     for player in players:
         player.tell(string)
 
-def create_plot(scores, path):
+def create_plot(players, scores, path):
     # Convert to numpy array
     scores = np.asarray(scores)
 
@@ -33,6 +33,7 @@ def create_plot(scores, path):
         cs = np.cumsum(scores[:, col])
         plt.plot(cs)
 
-    plt.legend(['0', '1', '2', '3'])
+    labels = ['Player ' + str(i) + ' (' + players[i].__class__.__name__ + ')' for i in range(len(players))]
+    plt.legend(labels)
     plt.savefig(path)
     plt.show()

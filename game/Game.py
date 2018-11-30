@@ -113,6 +113,7 @@ class Game():
             while action not in __state.playable_actions:
                 action = self.players[self.state.current_player].get_next_action(__state)
 
+                # For debugging
                 if action not in __state.playable_actions:
                     print(self.state)
                     print('got action: {}'.format(action))

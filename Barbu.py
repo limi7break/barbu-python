@@ -150,10 +150,6 @@ def usage():
     print('     -h\thelp')
     print()
 
-    
-    print('Press Ctrl+C')
-    signal.pause()
-
 if __name__ == '__main__':
     print('Welcome to barbu-python 1.0!')
 
@@ -172,23 +168,24 @@ if __name__ == '__main__':
         elif opt in ('-s'):
             simulate = True
             all_scores = []
-            
-            # Define a signal handler to create plot before exiting
-            def signal_handler(sig, frame):
-                if not os.path.exists('plot/'):
-                    os.makedirs('plot/')
-                
-                now = datetime.datetime.now()
-                path = 'plot/{}{}{}_{}{}.png'.format(now.year, now.month, now.day, now.hour, now.minute)
-                
-                create_plot(all_scores, path)
-                
-                sys.exit(0)
-    
-            # Bind the handler to SIGINT (Ctrl-C)
-            signal.signal(signal.SIGINT, signal_handler)
 
     players = create_players(simulate=simulate)
+
+    if simulate:
+        # Define a signal handler to create plot before exiting
+        def signal_handler(sig, frame):
+            if not os.path.exists('plot/'):
+                os.makedirs('plot/')
+            
+            now = datetime.datetime.now()
+            path = 'plot/{}{}{}_{}{}.png'.format(now.year, now.month, now.day, now.hour, now.minute)
+            
+            create_plot(players, all_scores, path)
+            
+            sys.exit(0)
+
+        # Bind the handler to SIGINT (Ctrl-C)
+        signal.signal(signal.SIGINT, signal_handler)
 
     while simulate:
         barbu = Barbu(players)

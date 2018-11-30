@@ -128,7 +128,8 @@ class HeuristicPlayer(Player):
         
         Non-leading:
             - if we have to follow suit:
-                - if we *have* to play higher, play the highest card of that suit.
+                - if we *have* to play higher, play the highest card of that suit that
+                  is lower than the highest that is present.
                 - if we can go lower, play the highest card of that suit that goes lower.
             - if we don't:
                 - play the highest card we have.
@@ -161,7 +162,11 @@ class HeuristicPlayer(Player):
                 if lower_same_suit:
                     return self.play_highest(lower_same_suit)    
                 else:
-                    return self.play_highest(same_suit)
+                    not_highest = [card for card in same_suit if card.value < state.highest[same_suit[0].suit]]
+                    if not_highest:
+                        return self.play_highest(not_highest)
+                    else:
+                        return self.play_highest(same_suit)
             
             return self.play_highest(self.hand)
 
@@ -177,7 +182,8 @@ class HeuristicPlayer(Player):
 
             Non-leading:
                 - if we have to follow suit:
-                    - if we *have* to play higher, play the highest card of that suit (unless hearts)
+                    - if we *have* to play higher, play the highest card of that suit that
+                      is lower than the highest that is present.
                     - if we can go lower, play the highest card of that suit that goes lower.
                 - if we don't:
                     - play the highest hearts we have, otherwise the highest card we have.
@@ -211,13 +217,13 @@ class HeuristicPlayer(Player):
                 winning_card = get_winning_card(state.trick_cards)
                 lower_same_suit = [card for card in same_suit if card.value < winning_card.value]
                 if lower_same_suit:
-                    return self.play_highest(lower_same_suit)    
-                elif same_suit[0].suit == '♥':
-                    lower_than_10 = [card for card in same_suit if card.value < 8]
-                    if lower_than_10:
-                        return self.play_highest(lower_than_10)
+                    return self.play_highest(lower_same_suit)
                 else:
-                    return self.play_highest(same_suit)
+                    not_highest = [card for card in same_suit if card.value < state.highest[same_suit[0].suit]]
+                    if not_highest:
+                        return self.play_highest(not_highest)
+                    else:
+                        return self.play_highest(same_suit)
             
             hearts = [card for card in self.hand if card.suit == '♥']
             if hearts:
@@ -237,7 +243,8 @@ class HeuristicPlayer(Player):
 
             Non-leading:
                 - if we have to follow suit:
-                    - if we *have* to play higher, play the highest card of that suit
+                    - if we *have* to play higher, play the highest card of that suit that
+                      is lower than the highest that is present.
                     - if we can go lower, play the highest card of that suit that goes lower.
                 - if we don't:
                     - play the K♥ if possible, otherwise the highest card we have.
@@ -271,9 +278,13 @@ class HeuristicPlayer(Player):
                 winning_card = get_winning_card(state.trick_cards)
                 lower_same_suit = [card for card in same_suit if card.value < winning_card.value]
                 if lower_same_suit:
-                    return self.play_highest(lower_same_suit)    
+                    return self.play_highest(lower_same_suit)   
                 else:
-                    return self.play_highest(same_suit)
+                    not_highest = [card for card in same_suit if card.value < state.highest[same_suit[0].suit]]
+                    if not_highest:
+                        return self.play_highest(not_highest) 
+                    else:
+                        return self.play_highest(same_suit)
             
             king_of_hearts = Card('Hearts', 'K')
             if king_of_hearts in self.hand:
@@ -283,7 +294,8 @@ class HeuristicPlayer(Player):
 
     def get_next_action_nolasttwo(self, state):
         '''
-            - if it's one of the last two tricks, always play lowest.
+            - if it's one of the last two tricks, play lowest
+              according to info we have on missing suits.
 
             Leading:
                 - if we have any of the four highest cards, play the one of the longest suit.
@@ -296,23 +308,42 @@ class HeuristicPlayer(Player):
                     - play highest
         '''
         state = self.fix_missing(state)
+        other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
+
+        if len(self.hand) == 2:
+            # Special case of last two tricks
+            if not state.trick_cards:
+                # Leading
+                ok_cards = []
+                for card in self.hand:
+                    if not all([state.missing_suits[card.suit][player] for player in other_players]) and \
+                       not self.is_highest(state, card):
+                        ok_cards.append(card)
+
+                if ok_cards:
+                    return self.play_lowest(ok_cards)
+
+                return self.play_lowest(self.hand)
+            else:
+                # Non-leading
+                same_suit = [card for card in self.hand if card.suit == state.trick_cards[0].suit]
+                if same_suit:
+                    return self.play_lowest(same_suit)
+                else:
+                    return self.play_lowest(self.hand)
 
         if not state.trick_cards:
             # Leading
             highest_cards = [card for card in self.hand if self.is_highest(state, card)]
             if highest_cards:
-                if len(highest_cards) == 1:
-                    return self.hand.index(highest_cards[0])
-                else:
-                    longest_suit = [card for card in self.hand if card.suit == highest_cards[0].suit]
-                    for hc in highest_cards:
-                        suit_cards = [card for card in self.hand if card.suit == hc.suit]
-                        if len(suit_cards) > len(longest_suit):
-                            longest_suit = [card for card in self.hand if card.suit == hc.suit]
+                longest_suit = [card for card in self.hand if card.suit == highest_cards[0].suit]
+                for hc in highest_cards:
+                    suit_cards = [card for card in self.hand if card.suit == hc.suit]
+                    if len(suit_cards) > len(longest_suit):
+                        longest_suit = [card for card in self.hand if card.suit == hc.suit]
 
-                    return self.play_highest(longest_suit)
+                return self.play_highest(longest_suit)
 
-            other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
             for suit in Card.suits:
                 if all([state.missing_suits[suit][player] for player in other_players]):
                     suit_cards = [card for card in self.hand if card.suit == suit]
@@ -332,14 +363,15 @@ class HeuristicPlayer(Player):
     def get_next_action_noqueens(self, state):
         '''
             Leading:
-                - take shortest suit.
+                - take shortest queenless suit.
                     - if no one has ran out of cards of that suit, and a maximum of 7 cards
-                      of that suit have already been played, lead highest except QKA
+                      of that suit have already been played, lead highest except KA
                     - otherwise, lead lowest.
 
             Non-leading:
                 - if we have to follow suit:
-                    - if we *have* to play higher, play the highest card of that suit except QKA
+                    - if we *have* to play higher, play the highest card of that suit that
+                      is lower than the highest that is present, except QKA
                     - if we can go lower, play the highest card of that suit that goes lower.
                 - if we don't:
                     - play queen if possible, otherwise the highest card we have.
@@ -352,18 +384,22 @@ class HeuristicPlayer(Player):
             clubs = [card for card in self.hand if card.suit == '♣']
             spades = [card for card in self.hand if card.suit == '♠']
 
-            suits = list(filter(lambda x: len(x) != 0, [hearts, diamonds, clubs, spades]))
-            lengths = list(map(len, suits))
-            shortest_suit = suits[lengths.index(min(lengths))]
+            def queenless(suit):
+                return len(suit) > 0 and not any([card.value == 10 for card in suit])
 
-            other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
-            if not any([state.missing_suits[shortest_suit[0].suit][player] for player in other_players]) and \
-               sum([1 for card in state.played_cards if card.suit == shortest_suit[0].suit]) < 8:
-                filtered = list(filter(lambda x: x.value < 10, shortest_suit))
-                if filtered:
-                    return self.play_highest(filtered)
-            
-            return self.play_lowest(shortest_suit)
+            queenless_suits = list(filter(queenless, [hearts, diamonds, clubs, spades]))
+            if queenless_suits:
+                queenless_shortest = sorted(queenless_suits, key=len)
+
+                for qs in queenless_shortest:
+                    other_players = [i for i in range(consts.NUM_PLAYERS) if i != self.ID]
+                    if not any([state.missing_suits[qs[0].suit][player] for player in other_players]) and \
+                       sum([1 for card in state.played_cards if card.suit == qs[0].suit]) < 8:
+                        filtered = list(filter(lambda x: x.value < 10, qs))
+                        if filtered:
+                            return self.play_highest(filtered)
+                
+            return self.play_lowest(self.hand)
 
         else:
             # Non-leading
@@ -372,13 +408,22 @@ class HeuristicPlayer(Player):
                 winning_card = get_winning_card(state.trick_cards)
                 lower_same_suit = [card for card in same_suit if card.value < winning_card.value]
                 if lower_same_suit:
-                    return self.play_highest(lower_same_suit)    
+                    queen_lower = [card for card in lower_same_suit if card.value == 10]
+                    if queen_lower:
+                        return self.hand.index(queen_lower[0])
+
+                    return self.play_highest(lower_same_suit)
                 else:
-                    filtered = list(filter(lambda x: x.value < 10, same_suit))
-                    if filtered:
-                        return self.play_highest(filtered)
+                    not_highest_or_qka = [card for card in same_suit if card.value < state.highest[same_suit[0].suit] and card.value < 10]
+                    if not_highest_or_qka:
+                        return self.play_highest(not_highest_or_qka)
                     else:
-                        return self.play_highest(same_suit)
+                        no_queen = [card for card in same_suit if card.value != 10]
+                        if no_queen:
+                            return self.play_highest(no_queen)
+
+                return self.play_highest(same_suit)
+
             else:
                 queens = [card for card in self.hand if card.value == 10]
                 if queens:
